@@ -1,4 +1,5 @@
 # STA380-Exercises
+```{r example1, echo=FALSE}
 #Question 1 - Green Buildings
 library(tidyverse)
 library(car)
