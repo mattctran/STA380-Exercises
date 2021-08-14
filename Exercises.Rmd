@@ -1,7 +1,7 @@
 ---
-title: "Exam Template"
-author: "Student"
-date: "7/12/2020"
+STA 380 Exercises
+Matthew Tran
+8/16/2021
 output: pdf_document
 ---
 
