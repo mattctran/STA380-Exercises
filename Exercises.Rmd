@@ -331,6 +331,30 @@ The average wealth change $48.24 and the VaR was 9336.25. Both values indicate t
 
 Of the 3 portfolios analyzed the safe portfolio turned out to be the best investment with the highest average increase in wealth of $600.93 and the a lower VaR of 6298.49 . The worst performing portfolio was the one that used diverse ETFs with the lowest average increase of $48.24 in wealth and a high VaR of 9336.25. The commodities only portfolio had an average increase of $337.09 and high VaR of 10836.84. The wealth increase for the commodities only portfolio was much higher than the diverse portfolio in comparison to their relativity similar (in magnitude) VaR.
 
+# Question 4: Market Segmentation
+
+```{r data cleanup 4, include=FALSE}
+library(corrplot)
+library(tidyverse)
+library(lares)
+marketing <- read_csv("https://raw.githubusercontent.com/jgscott/STA380/master/data/social_marketing.csv", row.names=1)
+marketing <- marketing %>%
+  select(-c(1))
+marketing_matrix <- cor(marketing)
+```
+
+```{r figure 4.1, echo=FALSE}
+corrplot(marketing_matrix, type="lower", order="hclust")
+```
+
+```{r figure 4.1, echo=FALSE}
+corr_cross(marketing_matrix, max_pvalue = 0.05, top = 10)
+```
+
+Based on the correlation plot there seems to be about 6 groups of highly correlated categories.Fashion and Cooking, personal fitness and outdoors, computers and travel, chatter and photo sharing, college and online gaming, TV and art, news and automotive are correlated mostly in those pairs. One large group of correlation is between parenting, religion, sports fandom, food and school.
+
+# Question 5: Author attribution
+
 # Question 6: Association Rule Mining
 
 A support parameter of 0.0015 and a confidence level of 0.9 were used in this evaluation to reduce the number of rules to evaluate. The support parameter limits the output by putting a threshold on the frequency of a scenario in the data set and the confidence limited the rules to the ones that were 90% likely. The maxlen was set to 8 since previous iterations of the algorithm under different parameters could not go past that value.
