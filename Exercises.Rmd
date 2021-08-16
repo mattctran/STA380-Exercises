@@ -1,110 +1,361 @@
 ---
-STA 380 Exercises
-Matthew Tran
-8/16/2021
-output: pdf_document
+title: "STA 380 Exercises"
+author: "Matthew Tran"
+date: "8/16/2021"
+output:
+  html_document:
+    df_print: paged
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+# Question 1: Green Buildings
 
-# Introduction
-
-This file is a R Markdown template that you may use to help you generate the file of your final exam. You are not required to write your exam in R Markdown, but it is an easy way to show your R results. 
-
-In the case of this document, a pdf file is generated if you click in the **Knit** buttom above the script. You can check that the standard output for this file is a pdf on line 5, which stated **output: pdf_document**. 
-
-If the output is not defined as pdf, or for any other reason you want to generate a HTML/Word file, simply click on the arrow on the right side of the **Knit** buttom and change your output.
-
-# Sections
-
-You can include sections and subsections easily on R Markdown by simply using the **#** symbol before the title of your current session. This also creates shortcuts sections in the pdf file. Let us try to add  sections.
-
-## This is a subsection
-
-And you can write whatever you need here.
-
-### This is a subsubsection
-
-And as you noticed, this feature is easy to use.
-
-# Bullet Points, Bold and Italic
-
-To create a Bullet point simply add the * symbol at the beginning of the line. You can also use the + symbol to include a dash
-
-* This is a bullet point.
-  + This is a dash.
-
-To make something *italic*, simply write your text between two * symbols. To make it **bold**, use two * symbols on each side of the text.
-
-# Math Mode
-
-One interesting thing about R Markdown is that you can use LaTeX code in the document, which means that the math mode is also available. If you want to write anything in math mode along the text, you simply need to include your text between two **$** symbols.
-
-For example, I can write $\exp(x^2)$ and it is written in math mode. If the expression is too complex, or too long, you can use two **$** symbols on each side, creating a chunk for the math expression:
-
-$$
-f\left(x | \mu, \sigma \right) = \frac{1}{\sqrt{2\pi \sigma^2}} \exp\left(-\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2\right).
-$$
-
-There are plenty of tutorials and generators of LaTeX code online, so this feature might be useful.
-
-# About the Code in your file
-
-Finally, R Markdown can run R code inside chunks. You can create a new chunk using the shortcut **Ctrl + Alt + I ( Cmd + Option + I on macOS)**. You can give names to those chunks, but **if two chunks in the .Rmd have the same name, you will not be able to generate the pdf**.
-
-For the exam, usually we do not want to see your code, only your results, which means that those chunks of R code should not be included. This is possible by including arguments inside the curly brackets of your chunk. First, let us run a function hiding the code chunk by using the argument `echo = FALSE`.
-
-```{r example1, echo=FALSE}
-head(mtcars)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the results, so only what was shown in the console was printed.
-
-Not all messages from the console are desirable, for example, let us turn on the *tidyverse* package:
-
-```{r example2, echo=FALSE}
+```{r cleanup 1, include=FALSE}
 library(tidyverse)
+library(mosaic)
+greenhouse <- read.csv("https://raw.githubusercontent.com/jgscott/STA380/master/data/greenbuildings.csv")
+#Combine Class Variable
+greenhouse$class_col <- 0
+for (i in 1:nrow(greenhouse)){
+  n = 0
+  if (greenhouse$class_a[i] == 1){
+    n = 2
+  }
+  if (greenhouse$class_b[i] == 1){
+    n = 1
+  }
+  greenhouse$class_col[i] = n
+}
+
+greenhouse <- greenhouse %>% 
+  mutate(class_col = factor(class_col, levels=c(0,1,2), labels=c("C", "B", "A")))
+
+greenhouse <- subset(greenhouse, select = -c(class_a, class_b))
+
+#Factor Categorical Variables
+greenhouse <- greenhouse %>% 
+  mutate(LEED = factor(LEED, levels=c(0,1), labels=c("No", "Yes")), 
+         Energystar = factor(Energystar, levels=c(0,1), labels=c("No", "Yes")),
+         amenities = factor(amenities, levels=c(0,1), labels=c("No", "Yes")),
+         renovated = factor(renovated, levels=c(0,1), labels=c("No", "Yes")),
+         green_rating = factor(green_rating, levels=c(0,1), labels=c("No", "Yes")),
+         net = factor(net, levels=c(0,1), labels=c("No", "Yes")))
+
+#Filter Comparable Buildings
+comparable <- greenhouse %>% 
+  filter(stories>=10, stories<=20)
+
+comparable <- comparable %>% 
+  filter(size>=150000, size<=350000)
+
+comparable <- comparable %>% 
+  filter(leasing_rate>10)
+
+comparable <- comparable %>%
+  filter(age<21)
+
+#Separate Data
+compGreen <- comparable %>% 
+  filter(green_rating == 'Yes')
+
+compNon <- greenhouse %>% 
+  filter(green_rating == 'No')
 ```
 
-Note that those messages are not important to the analysis, so you may want to use the `message = FALSE` argument. You can also surpress undesirable warnings using the `warning = FALSE` argument. 
+The methodology is mostly sound though I believe that further filtering would be beneficial. Since the dimensions of the building are already known, 15 stories and 250,00 square feet, buildings that are not around the same size can be removed. It is also known that the building will be fairly young by definition so removing older buildings from the data set would also be reasonable. With that in mind the story range was set to 10, the size was set to 200,000, and age cap was 20 years.
 
-You can include multiple arguments in the curly brackets, separating those arguments with a comma.
+The consultant based their calculations that the leasing rate would be 90% which may not be the case so evaluating for the difference in leasing rates would give a representation of the premium for building a green building.
 
-A better option if your simply want the code to run and surpress both the code and the results from the code from appearing in the final file is to use the `include = FALSE` argument. Do not forget that no results will be printed by using this option, se be careful.
-
-For example, I will created an object in one chunk with the `include = FALSE` argument, but the result will not be printed.
-
-```{r example3, include = FALSE}
-sumRes <- sum(1:10)
-sumRes
-cat("Now include = FALSE and this message will not appear in the pdf")
+```{r figure 1.1 and 1.2, echo=FALSE}
+#Evaluate Histograms
+hist(compGreen$Rent,
+     main="Green Building Rent",
+     xlab="Rent")
+hist(compGreen$leasing_rate,
+     main="Green Building Leasing Rates",
+     xlab="Leasing Rate")
 ```
 
-However, I can call the same object in another chunk.
+The histogram for the green building rate is not skewed, but the one for leasing rate is skewed to the left. While the best measurement for center would be mean for the rate, for consistency sake (with the non-green histograms) the median should be used. The median rent is $35.01 and the leasing rate is 90.69%. This means that the building will make back it's total cost in 13.23 years.
 
-```{r example4, echo=FALSE}
-sumRes
+```{r figure 1.3 and 1.4, echo=FALSE}
+hist(compNon$Rent,
+     main="Non-Green Building Rent",
+     xlab="Rent")
+
+hist(compNon$leasing_rate,
+     main="Non-Green Building Leasing Rate",
+     xlab="Leasing Rate")
 ```
 
-Basically you need to separate your chunks properly to show only the desirable results.
+The histogram for the non-green building rent is skewed to the right while the one for leasing rate is skewed to the left. This makes the median the better measurement of center for both. The median rent is $25.00 and the leasing rate is 89.17%. This means that the building will make back its cost in 17.94 years.
 
-
-# Including Plots
-
-Finally, let us generate some data and print a plot.
-
-```{r fig1, echo=FALSE}
-x <- rnorm(1000) #Generating x
-y <- dnorm(x)+rnorm(1000,0,.01)
-
-plot(x,y)
+```{r stats 1, include=FALSE}
+greenRent <- fav_stats(compGreen$Rent)
+greenLease <- fav_stats(compGreen$leasing_rate)
+nonRent <- fav_stats(compNon$Rent)
+nonLease <- fav_stats(compNon$leasing_rate)
+paybackGreen <- 105000000/(greenRent$median*greenLease$median*0.01*250000)
+paybackNon <- 100000000/(nonRent$median*nonLease$median*0.01*250000)
 ```
 
-It is as easy as it looks. Note that the `echo = FALSE` argument surpressed the code and only the plot was printed. You can also include arguments in your chunk that will change the features of your plot, such as width, height and alignment.
+Based on the histograms above I would agree with the previous consultant in that going green would be the better option since it would reach the break even point about 5 years before the non-green building would.
 
-```{r fig2, echo=FALSE, fig.align='left', fig.height = 3, fig.width = 5}
-plot(x,y, col = "red")
+# Question 2: ABIA
+
+The figures and models below are attempts to find out what, if any, periods of time have an effect on negative flight factors that can mess with scheduling such as delays, diversions, and cancellations.
+
+```{r cleanup 2, include=FALSE}
+library(tidyverse)
+library(corrplot)
+#Data Cleanup
+ABIA <- read_csv("https://raw.githubusercontent.com/jgscott/STA380/master/data/ABIA.csv")
+ABIA <- ABIA %>% 
+  mutate(Month = factor(Month, levels=c(1,2,3,4,5,6,7,8,9,10,11,12),
+                        labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                 "Jul", "Aug", "Spt", "Oct", "Nov", "Dec")),
+         DayOfWeek = factor(DayOfWeek, levels=c(1,2,3,4,5,6,7),
+                            labels = c("Mon", "Tue", "Wed", "Thr",
+                                       "Fri", "Sat", "Sun")),
+         Cancelled = factor(Cancelled, levels=c(0,1),
+                            labels=c("No", "Yes")),
+         Diverted = factor(Diverted,levels=c(0,1),
+                           labels=c("No", "Yes")))
 ```
 
+```{r figure 2.1, echo=FALSE}
+#Cancellations by Day
+dayCounts <- table(ABIA$DayOfWeek, ABIA$Cancelled)
+dayRatio <- as.data.frame.matrix(dayCounts)
+dayRatio <- dayRatio %>%
+  mutate(Ratio = 100*Yes/(Yes+No))
+dayRatio <-dayRatio[-c(1:2)]
+barplot(dayRatio$Ratio, main="Canncelations by Day of Week",
+        xlab= "Day of Week",
+        names.arg = c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+        ylab= "% Cancellations",
+        ylim=c(0,3))
+```
+
+```{r figure 2.2, echo=FALSE}
+#Cancellations by Month
+monthCounts <- table(ABIA$Month, ABIA$Cancelled)
+monthRatio <- as.data.frame.matrix(monthCounts)
+monthRatio <- monthRatio %>%
+  mutate(Ratio = 100*Yes/(Yes+No))
+monthRatio <-monthRatio[-c(1:2)]
+barplot(monthRatio$Ratio, main="Canncelations by Month",
+        xlab= "Month",
+        names.arg = c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                     "Jul", "Aug", "Spt", "Oct", "Nov", "Dec"),
+        ylab= "% Cancellations",
+        ylim=c(0,3))
+```
+
+The bar plots above show that Tuesdays have a higher percentage of cancellations than the other days of the week, approaching 2% while the other days fall at around 1-1.5%. For the months there seems to be a steady decline in the chance of cancellation as the year goes by, starting in March with a spike in September. 
+
+```{r}
+cancelled <- glm(Cancelled ~ DayOfWeek + Month, family = "binomial", data = ABIA)
+summary(cancelled)
+
+diverted <- glm(Diverted ~ DayOfWeek + Month, family = "binomial", data = ABIA)
+summary
+
+aDelay <- glm(ArrDelay ~ DayOfWeek + Month, data = ABIA)
+summary(aDelay)
+
+dDelay <- glm(DepDelay ~ DayOfWeek + Month, data = ABIA)
+summary(dDelay)
+```
+
+Logistic Regressions predicting for cancellations show that there is some predictive power in the days of the week and months, with months being a bit more noticeable, but overall it is quite low. Comparing the linear regressions for arrival and departure delays these variables seem to be better at predicting for arrival delays than departure delays, but as with the other model it is quite low.
+
+# Question 3: Portfolio Modeling
+
+```{r cleanup 3, include=FALSE}
+library(mosaic)
+library(quantmod)
+library(foreach)
+```
+
+### Commodities Only Portfolio
+
+This portfolio was made up of ETFs investing only in commodities. GLD and IAU are made up of gold, JJT is made up in metals, and USO is made of oil. This portfolio was used to see what would happen if a portfolio was made only of commodities.
+
+```{r calculations 3.1, include=FALSE}
+#Set Up Portfolio
+ETFs = c("GLD", "IAU", "JJT", "USO")
+prices = getSymbols(ETFs, from = "2016-08-16")
+
+for(ticker in ETFs) {
+  expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+  eval(parse(text=expr))
+}
+
+#Create a Return Matrix
+com_returns = cbind(ClCl(GLDa), ClCl(IAUa), ClCl(JJTa), ClCl(USOa))
+com_returns = as.matrix(na.omit(com_returns))
+
+#Simulate Investment
+initial_wealth = 100000
+com_sim = foreach(i=1:1000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weight = c(0.25, 0.25, 0.25, 0.25)
+  holdings = weight*total_wealth
+  Days = 20
+  investment_tracker = rep(0, Days)
+  for(today in 1:Days) {
+    return_day = resample(com_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return_day
+    total_wealth = sum(holdings)
+    investment_tracker[today] = total_wealth
+  }
+  investment_tracker
+}
+
+
+#Evaluate Portfolio
+mean(com_sim[,Days] - initial_wealth)
+quantile(com_sim[,Days]- initial_wealth, prob=0.05)
+```
+
+```{r figure 3.1, echo=FALSE}
+#Profit/Losses Figure
+hist(com_sim[,Days]- initial_wealth, 
+     main="Only Commodities Portfolio",
+     xlab="Profit/Losses",
+     breaks=20)
+```
+
+The average wealth change was about $337.09 with a value at risk of 10836.84 at the 5% level. The mean shows that on average the portfolio would make money. The VaR indicates that there is a 95% the portfolio will loose $10,836.84 over 4 weeks. 
+
+### Safe Portfolio
+
+This next portfolio adds 2 ETFs that are composed of bonds, which are relatively safe investments, while removing 2 commodities ETFs. GLD and USO were kept. The 2 bonds were NYF and CMF which are represent New York and California respectively. The commodities were kept for diversity.
+
+```{r calculations 3.2, include=FALSE}
+#Set Up Portfolio
+ETFs = c("GLD", "USO", "NYF", "CMF")
+prices = getSymbols(ETFs, from = "2016-08-16")
+
+for(ticker in ETFs) {
+  expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+  eval(parse(text=expr))
+}
+
+#Create a Return Matrix
+safe_returns = cbind(ClCl(GLDa), ClCl(CMFa), ClCl(NYFa), ClCl(USOa))
+safe_returns = as.matrix(na.omit(safe_returns))
+
+#Simulate Investment
+initial_wealth = 100000
+safe_sim = foreach(i=1:1000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weight = c(0.25, 0.25, 0.25, 0.25)
+  holdings = weight*total_wealth
+  Days = 20
+  investment_tracker = rep(0, Days)
+  for(today in 1:Days) {
+    return_day = resample(safe_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return_day
+    total_wealth = sum(holdings)
+    investment_tracker[today] = total_wealth
+  }
+  investment_tracker
+}
+
+#Evaluate Portfolio
+mean(safe_sim[,Days] - initial_wealth)
+quantile(safe_sim[,Days]- initial_wealth, prob=0.05)
+```
+
+```{r figure 3.2, echo=FALSE}
+#Profit/Losses Figure
+hist(safe_sim[,Days]- initial_wealth, 
+     main="Commodities and Bonds Portfolio",
+     xlab="Profit/Losses",
+     breaks=20)
+```
+
+The average wealth change was $600.93 which is an increase from the commodities only portfolio. The VaR was reduced to 6298.49. Both values show that this portfolio is a better investment than the previous.
+
+### Diverse Portfolio
+
+This portfolio was made in a similar way as the previous one except instead of bonds diverse ETFs were used. The 2 commodities were kept for the sake of comparison to the safe portfolio. The 2 new ETFs were HIPS and DWPP.
+
+```{r calculations 3.3, include=FALSE}
+#Set Up Portfolio
+ETFs = c("GLD", "USO", "HIPS", "DWPP")
+prices = getSymbols(ETFs, from = "2016-08-16")
+
+for(ticker in ETFs) {
+  expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+  eval(parse(text=expr))
+}
+
+#Create a Return Matrix
+div_returns = cbind(ClCl(GLDa), ClCl(HIPSa), ClCl(DWPPa), ClCl(USOa))
+div_returns = as.matrix(na.omit(div_returns))
+
+#Simulate Investment
+initial_wealth = 100000
+div_sim = foreach(i=1:1000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weight = c(0.25, 0.25, 0.25, 0.25)
+  holdings = weight*total_wealth
+  Days = 20
+  investment_tracker = rep(0, Days)
+  for(today in 1:Days) {
+    return_day = resample(div_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return_day
+    total_wealth = sum(holdings)
+    investment_tracker[today] = total_wealth
+  }
+  investment_tracker
+}
+
+
+#Evaluate Portfolio
+mean(div_sim[,Days] - initial_wealth)
+quantile(div_sim[,Days]- initial_wealth, prob=0.05)
+```
+
+```{r figure 3.3, echo=FALSE}
+#Profit/Losses Figure
+hist(div_sim[,Days]- initial_wealth, 
+     main="Commodities and Diverse Portfolio",
+     xlab="Profit/Losses",
+     breaks=20)
+```
+
+The average wealth change $48.24 and the VaR was 9336.25. Both values indicate that this particular portfolio is worse off than the safe portfolio. 
+
+Of the 3 portfolios analyzed the safe portfolio turned out to be the best investment with the highest average increase in wealth of $600.93 and the a lower VaR of 6298.49 . The worst performing portfolio was the one that used diverse ETFs with the lowest average increase of $48.24 in wealth and a high VaR of 9336.25. The commodities only portfolio had an average increase of $337.09 and high VaR of 10836.84. The wealth increase for the commodities only portfolio was much higher than the diverse portfolio in comparison to their relativity similar (in magnitude) VaR.
+
+# Question 6: Association Rule Mining
+
+A support parameter of 0.0015 and a confidence level of 0.9 were used in this evaluation to reduce the number of rules to evaluate. The support parameter limits the output by putting a threshold on the frequency of a scenario in the data set and the confidence limited the rules to the ones that were 90% likely. The maxlen was set to 8 since previous iterations of the algorithm under different parameters could not go past that value.
+
+```{r data cleanup 6, include=FALSE}
+library(arules)
+library(arulesViz)
+
+#Data Cleaing
+data <- read.delim2("https://raw.githubusercontent.com/jgscott/STA380/master/data/groceries.txt", header = FALSE, sep = "\t")
+write.csv(data,"groceries.csv", quote = FALSE, row.names = FALSE)
+
+#Read Data
+groceries <- read.transactions("groceries.csv", format = 'basket', sep=',')
+summary(groceries)
+
+groceries_ARM <- apriori(groceries, parameter = list(supp=0.0015, conf=0.9, maxlen=8))
+
+inspect(groceries_ARM)
+```
+
+### Association Rules Diagram
+
+```{r figure 6, echo=FALSE}
+plot(groceries_ARM, method = "graph",  engine = "htmlwidget")
+```
+
+The rule with the largest lift (11.23) was that a basket that contains liquor and red/blush wine would likely also contain bottled beer. Notably this rule is separated from the other 6 rules which are interconnected. The overall rule makes sense since for a party it is common to have different types of alcoholic beverages. The other rules had a lower lifts (roughly 3.5-4.5). This indicates that these scenarios are less likely than the previous rules.The item that appeared most on the left hand side was tropical fruit and the one that showed up the most on the right hand side was whole milk. In general it seems that the more common the food is as an ingredient the more connections it has. Also the make-up of these rules have a similar theme of being common ingredients in stew and dessert type foods. This makes sense since the ingredients to make a dish are more likely to be purchased together
